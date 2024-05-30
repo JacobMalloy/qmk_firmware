@@ -105,8 +105,8 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 #ifdef OLED_ENABLE
 
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
-  //if (!is_keyboard_left())
-  //  return OLED_ROTATION_180;  // flips the display 180 degrees if offhand
+  if (!is_keyboard_master())
+    return OLED_ROTATION_180;  // flips the display 180 degrees if offhand
   return rotation;
 }
 
@@ -123,11 +123,11 @@ const char *read_keylogs(void);
 // const char *read_timelog(void);
 
 bool oled_task_user(void) {
-  if (is_keyboard_left()) {
+  if (is_keyboard_master()) {
     // If you want to change the display of OLED, you need to change here
     oled_write_ln(read_layer_state(), false);
-    //oled_write_ln(read_keylog(), false);
-    //oled_write_ln(read_keylogs(), false);
+    oled_write_ln(read_keylog(), false);
+    oled_write_ln(read_keylogs(), false);
     //oled_write_ln(read_mode_icon(keymap_config.swap_lalt_lgui), false);
     //oled_write_ln(read_host_led_state(), false);
     //oled_write_ln(read_timelog(), false);
