@@ -9,6 +9,29 @@ enum layer_number {
   _ADJUST,
 };
 
+// macOS input-source switch. Ctrl+Space is the stock binding for
+// "Select the previous input source" under System Settings > Keyboard >
+// Keyboard Shortcuts > Input Sources. With exactly two sources installed
+// (ABC and Pinyin - Simplified) it toggles straight between them.
+//
+// Sent as a custom keycode rather than plain LCTL(KC_SPC) so that holding the
+// key does not autorepeat - autorepeat would fire the toggle over and over and
+// flip the input source back and forth. See process_record_user below.
+enum custom_keycodes {
+  LANG_SW = SAFE_RANGE,
+};
+
+// One-shot modifiers. Tap one and it sticks until the next real keypress, so
+// modifier chords never require holding several keys at once. They stack
+// (oneshot_mods |= mods), and with ONESHOT_TIMEOUT undefined they never expire,
+// so Ctrl+Cmd+Shift+key is three unhurried taps then the key. Holding a layer
+// key does not consume them - MO() never enters the HID report - so combos like
+// Cmd+Left (arrow lives on RAISE) work.
+#define OSM_GUI OSM(MOD_LGUI)
+#define OSM_ALT OSM(MOD_LALT)
+#define OSM_CTL OSM(MOD_LCTL)
+#define OSM_SFT OSM(MOD_LSFT)
+
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 /* QWERTY
@@ -37,7 +60,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * ,-----------------------------------------.                    ,-----------------------------------------.
  * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |  `   |      |      |      |      |      |                    |      |      |      |      |      |  \   |
+ * |  `   | Cmd  | Opt  | Ctrl | Shft |      |                    |      |      |      |      |      |  \   |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
  * |      |   1  |   2  |   3  |   4  |   5  |-------.    ,-------|   6  |   7  |   8  |   9  |   0  |  -   |
  * |------+------+------+------+------+------|       |    |       |------+------+------+------+------+------|
@@ -49,7 +72,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  */
 [_LOWER] = LAYOUT(
   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                   XXXXXXX, XXXXXXX, XXXXXXX,XXXXXXX, XXXXXXX, XXXXXXX,
-  KC_GRV, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                   XXXXXXX, XXXXXXX, XXXXXXX,XXXXXXX, XXXXXXX, KC_BSLS,
+  KC_GRV, OSM_GUI, OSM_ALT, OSM_CTL, OSM_SFT, XXXXXXX,                   XXXXXXX, XXXXXXX, XXXXXXX,XXXXXXX, XXXXXXX, KC_BSLS,
   _______,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,                      KC_6,    KC_7,    KC_8,   KC_9,    KC_0,    KC_MINS,
   _______, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, KC_MINS, KC_EQL, KC_LBRC, KC_RBRC, KC_BSLS,
                              _______, _______, _______, _______, _______,  _______, _______, _______
@@ -78,7 +101,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 ),
 /* ADJUST
  * ,-----------------------------------------.                    ,-----------------------------------------.
- * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
+ * | LANG |      |      |      |      |      |                    |      |      |      |      |      | GAME |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
  * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
@@ -91,7 +114,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  *                   `----------------------------'           '------''--------------------'
  */
   [_ADJUST] = LAYOUT(
-  XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, TG(_GAMING),
+  LANG_SW, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, TG(_GAMING),
   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,
   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                   XXXXXXX, KC_VOLD, KC_VOLU, XXXXXXX, XXXXXXX, XXXXXXX,
   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,
@@ -174,6 +197,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 #endif
     // set_timelog();
   }
+
+  switch (keycode) {
+    case LANG_SW:
+      // Tap once on press and swallow the hold, so the input source flips
+      // exactly once per press no matter how long the key is held down.
+      if (record->event.pressed) {
+        tap_code16(LCTL(KC_SPC));
+      }
+      return false;
+  }
+
   return true;
 }
 // clang-format on
